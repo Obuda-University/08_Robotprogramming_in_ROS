@@ -2,6 +2,7 @@ import math
 import rclpy
 from rclpy.node import Node
 from turtlesim.msg import Pose
+from turtlesim.srv import SetPen
 from geometry_msgs.msg import Twist
 
 
@@ -163,6 +164,66 @@ class ProportionalController(Node):
         vel_msg = Twist()
         self.cmd_pub.publish(vel_msg)
 
+    def set_pen(self, r: int, g: int, b: int, width: int, off: int) -> None:
+        """Calls the Turtlesim set_pen service."""
+        client = self.create_client(SetPen, '/turtle1/set_pen')
+        while not client.wait_for_service(timeout_sec=1.0):
+            self.get_logger().info('Pen service not available, waiting...')
+            
+        req = SetPen.Request()
+        req.r = r
+        req.g = g
+        req.b = b
+        req.width = width
+        req.off = off  # 1 for off (lifted), 0 for on (drawing)
+        
+        # Call async
+        client.call_async(req)
+        
+    def draw_irob(self) -> None:
+        """Executes the waypoints to draw 'iRob'."""
+        # Turn pen OFF to move to the starting position
+        self.set_pen(255, 255, 255, 3, 1)
+        # -- Draw 'i'
+        self.go_to_goal(2.0, 5.0) 
+        self.set_pen(255, 255, 255, 3, 0) # Pen ON
+        self.go_to_goal(2.0, 7.0)
+        
+        self.set_pen(255, 255, 255, 3, 1) # Pen OFF
+        self.go_to_goal(2.0, 7.5) 
+        self.set_pen(255, 255, 255, 3, 0) # Pen ON (The dot)
+        self.go_to_goal(2.0, 7.6)
+        # -- Draw 'R'
+        self.set_pen(255, 255, 255, 3, 1) # Pen OFF
+        self.go_to_goal(3.5, 5.0)
+        self.set_pen(255, 255, 255, 3, 0) # Pen ON
+        
+        self.go_to_goal(3.5, 8.0) # Stem up
+        self.go_to_goal(5.0, 8.0) # Top of loop
+        self.go_to_goal(5.0, 6.5) # Right of loop
+        self.go_to_goal(3.5, 6.5) # Bottom of loop
+        self.go_to_goal(5.0, 5.0) # Diagonal leg down
+        # -- Draw 'o'
+        self.set_pen(255, 255, 255, 3, 1) # Pen OFF
+        self.go_to_goal(6.0, 5.0)
+        self.set_pen(255, 255, 255, 3, 0) # Pen ON
+        
+        self.go_to_goal(6.0, 6.5) # Left side up
+        self.go_to_goal(7.5, 6.5) # Top side right
+        self.go_to_goal(7.5, 5.0) # Right side down
+        self.go_to_goal(6.0, 5.0) # Bottom side left
+        # -- Draw 'b'
+        self.set_pen(255, 255, 255, 3, 1) # Pen OFF
+        self.go_to_goal(8.5, 8.0) # Top of ascender
+        self.set_pen(255, 255, 255, 3, 0) # Pen ON
+        
+        self.go_to_goal(8.5, 5.0) # Stem down
+        self.go_to_goal(10.0, 5.0) # Bottom of loop right
+        self.go_to_goal(10.0, 6.5) # Right of loop up
+        self.go_to_goal(8.5, 6.5) # Top of loop left
+
+        self.get_logger().info("Drawing complete!")
+
 
 def main(args=None):
     rclpy.init(args=args)
@@ -179,10 +240,12 @@ def main(args=None):
         #tc.draw_poly(2.0, 1.5, 6, 2.0)  # Hexagon
         
         # 3. Test with coordinates on the map
-        pc.go_to_goal(8.0, 8.0)
-        pc.go_to_goal(2.0, 8.0)
-        pc.go_to_goal(5.5, 5.5) # Center
+        #pc.go_to_goal(8.0, 8.0)
+        #pc.go_to_goal(2.0, 8.0)
+        #pc.go_to_goal(5.5, 5.5) # Center
         
+        # 4. Draw text
+        pc.draw_irob()
     except KeyboardInterrupt:
         tc.get_logger().info("Execution interrupted by user (CTRL+C).")
     finally:
