@@ -24,7 +24,7 @@ setup(
     },
     entry_points={
         'console_scripts': [
-            'turtle_ctrl = class_02.turtlesim_controller:main',
+            'turtlesim_controller = class_02.turtlesim_controller:main',
         ],
     },
 )
