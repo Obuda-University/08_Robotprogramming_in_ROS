@@ -9,7 +9,6 @@ from matplotlib import pyplot as plt
 
 
 class PSM(Node):
-
     def __init__(self):
         super().__init__('psm_grasp')
         self.servo_cp_pub = self.create_publisher(
@@ -110,6 +109,35 @@ class PSM(Node):
 
         self.get_logger().info('Finsihed navigation.')
 
+    def move_tcp_circular(self, center, radius, duration, dt):
+        # Wait for pos to be received
+        loop_rate = self.create_rate(100, self.get_clock()) # Hz
+        while self.measured_cp is None and rclpy.ok():
+            self.get_logger().info('Waiting for pose...')
+            rclpy.spin_once(self)
+
+        # Calculate number of steps
+        N = int(math.floor(duration / dt))
+        
+        # Generate angles from 0 to 2*Pi
+        thetas = np.linspace(0, 2.0 * np.pi, N)
+
+        self.get_logger().info('Starting circular navigation...')
+
+        loop_rate = self.create_rate(1.0 / dt, self.get_clock()) # Hz
+        for i in range(N):
+            # Copy current pose to maintain orientation
+            msg = self.measured_cp 
+            
+            # Update X and Y based on the circle formula, keep Z constant
+            msg.pose.position.x = center[0] + radius * math.cos(thetas[i])
+            msg.pose.position.y = center[1] + radius * math.sin(thetas[i])
+            msg.pose.position.z = center[2]
+            
+            self.servo_cp_pub.publish(msg)
+            rclpy.spin_once(self)
+
+        self.get_logger().info('Finished circular navigation.')
 
     def move_jaw_to(self, target, omega, dt):
         # Wait for position to be received
@@ -160,12 +188,17 @@ def main(args=None):
     psm = PSM()
 
     #Reset the arm
-    psm.move_tcp_to([0.0, 0.0, -0.12], 0.01, 0.01)
+    center_point = [0.0, 0.0, -0.12]
+    psm.move_tcp_to(center_point, 0.01, 0.01)
     psm.move_jaw_to(0.0, 0.1, 0.01)
+
+    # Execute circular traj
+    # Rad = 3cm, Dur = 5s
+    psm.move_tcp_circular(center=center_point, radius=0.03, duration=5.0, dt=0.01)
 
     #psm.move_tcp_to(target=[0.0, 0.05, -0.12], v=0.01, dt=0.01)
     #psm.move_jaw_to(target=0.8, omega=0.2, dt=0.01)
-    psm.grasp_marker(v=0.005, omega=0.05, dt=0.01)
+    #psm.grasp_marker(v=0.005, omega=0.05, dt=0.01)
 
     # Destroy the node explicitly
     # (optional - otherwise it will be done automatically
@@ -175,4 +208,3 @@ def main(args=None):
 
 if __name__ == '__main__':
     main()
-    
