@@ -24,6 +24,8 @@ setup(
     },
     entry_points={
         'console_scripts': [
+            'grasp = class_03.psm_grasp:main',
+            'dummy = class_03.dummy_marker:main',
         ],
     },
 )
